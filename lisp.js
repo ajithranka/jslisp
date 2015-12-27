@@ -5,7 +5,7 @@ function parse(program) {
   return read(tokenize(program));
 }
 
-// Converts an expression from string to a sequence of tokens
+// Convert an expression from string to a sequence of tokens
 // @example tokenize("(* 2 x)") => ["(", "*", "2", "x", ")"]
 function tokenize(chars) {
   return chars.replace(/\(/g, " ( ")
@@ -41,4 +41,55 @@ function atom(token) {
     return Number(token);
   else
     return token;
+}
+
+////////// Environments
+
+function standardEnv() {
+  return {
+    "+": function(a, b) { return a + b; },
+    "-": function(a, b) { return a - b; },
+    "*": function(a, b) { return a * b; },
+    "/": function(a, b) { return a / b; },
+    ">": function(a, b) { return a > b; },
+    "<": function(a, b) { return a < b; },
+    "=": function(a, b) { return a == b; }
+  };
+}
+
+var globalEnv = standardEnv();
+
+///////// Eval
+
+// Evaluate an expression in an environment
+function evaluate(expr, env) {
+  env = env || globalEnv;
+  
+  if (expr in env) {
+    // Variable reference (x => 10)
+    return env[expr];
+  } else if (!isNaN(expr)) {
+    // Constant literal (10 => 10)
+    return expr;
+  } else if (expr[0] == "quote") {
+    // Quotation ((quote (1 2 3)) => (1 2 3))
+    return expr[1];
+  } else if (expr[0] == "if") {
+    // Conditional (if (> 5 10) x y)
+    var result = (evaluate(expr[1], env)) ? expr[2] : expr[3];
+    return evaluate(result, env);
+  } else if (expr[0] == "define") {
+    // Definition (define x 10)
+    env[expr[1]] = evaluate(expr[2], env);
+    return expr[1];
+  } else {
+    // Procedure call (proc arg ...)
+    var exps = [];
+    for (var i = 0; i < expr.length; i++) {
+      var exp = evaluate(expr[i], env);
+      exps.push(exp);
+    }
+    var proc = exps.shift();
+    return proc.apply(env, exps);
+  }
 }
