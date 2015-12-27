@@ -81,7 +81,7 @@ function evaluate(expr, env) {
   } else if (expr[0] == "define") {
     // Definition (define x 10)
     env[expr[1]] = evaluate(expr[2], env);
-    return expr[1];
+    return env[expr[1]];
   } else {
     // Procedure call (proc arg ...)
     var exps = [];
@@ -93,3 +93,18 @@ function evaluate(expr, env) {
     return proc.apply(env, exps);
   }
 }
+
+////////// REPL
+
+var readline = require('readline');
+
+var repl = readline.createInterface(process.stdin, process.stdout);
+repl.setPrompt('jslisp> ');
+repl.prompt();
+repl.on('line', function(line) {
+    if (line === "quit") repl.close();
+    console.log(evaluate(parse(line)));
+    repl.prompt();
+}).on('close', function(){
+    process.exit(0);
+});
