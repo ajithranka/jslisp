@@ -1,8 +1,8 @@
-////////// Parsing: parse, tokenize and readFromTokens
+////////// Parsing: parse, tokenize and read from tokens
 
-// Read a Scheme expression from a string and return an AST
+// Read a Scheme expression as a string and return an AST
 function parse(program) {
-  return readFrom(tokenize(program));
+  return read(tokenize(program));
 }
 
 // Converts an expression from string to a sequence of tokens
@@ -15,15 +15,15 @@ function tokenize(chars) {
 }
 
 // Read an expression as a sequence of tokens and convert it to an AST
-// @example readFrom(["(", "*", "2", "x", ")"]) => ["(", "*", 2, "x", ")"]
-function readFrom(tokens) {
+// @example read(tokenize("(* 3.14 (* r r))")) => ["*", 3.14, ["*", "r", "r"]]
+function read(tokens) {
   if (tokens.length === 0)
     throw new Error("Error: unexpected end of file");
   var token = tokens.shift();
   if (token == "(") {
     var list = [];
     while (tokens[0] != ")")
-      list.push(readFrom(tokens));
+      list.push(read(tokens));
     tokens.shift();  // Pop off ")"
     return list;
   } else if (token == ")") {
@@ -33,7 +33,7 @@ function readFrom(tokens) {
   }
 }
 
-// Parse a token as a number or symbol
+// Parse a token as either a number or a symbol
 // @example atom("2") => 2
 // @example atom("x") => "x"
 function atom(token) {
