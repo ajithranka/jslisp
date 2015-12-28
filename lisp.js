@@ -46,11 +46,20 @@ function atom(token) {
 ////////// Environments
 
 function standardEnv() {
+  function toArray(args) {
+    return Array.prototype.slice.call(args);
+  }
+  function reduce(fn) {
+    return function() {
+      var args = toArray(arguments);
+      return args.reduce(fn);
+    }
+  }
   return {
-    "+": function(a, b) { return a + b; },
-    "-": function(a, b) { return a - b; },
-    "*": function(a, b) { return a * b; },
-    "/": function(a, b) { return a / b; },
+    "+": reduce(function(a, b) { return a + b; }),
+    "-": reduce(function(a, b) { return a - b; }),
+    "*": reduce(function(a, b) { return a * b; }),
+    "/": reduce(function(a, b) { return a / b; }),
     ">": function(a, b) { return a > b; },
     "<": function(a, b) { return a < b; },
     "=": function(a, b) { return a == b; }
