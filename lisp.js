@@ -1,12 +1,9 @@
-////////// Parsing: parse, tokenize and read from tokens
+// Parse
 
-// Read a Scheme expression as a string and return an AST
 function parse(program) {
-  return read(tokenize(program));
+  return read_from_tokens(tokenize(program));
 }
 
-// Convert an expression from string to a sequence of tokens
-// @example tokenize("(* 2 x)") => ["(", "*", "2", "x", ")"]
 function tokenize(chars) {
   return chars.replace(/\(/g, " ( ")
               .replace(/\)/g, " ) ")
@@ -14,96 +11,150 @@ function tokenize(chars) {
               .split(/\s+/);
 }
 
-// Read an expression as a sequence of tokens and convert it to an AST
-// @example read(tokenize("(* 3.14 (* r r))")) => ["*", 3.14, ["*", "r", "r"]]
-function read(tokens) {
-  if (tokens.length === 0)
-    throw new Error("Error: unexpected end of file");
+function read_from_tokens(tokens) {
+  if (tokens.length == 0)
+    throw new Error("Unbalanced parenthesis");
   var token = tokens.shift();
   if (token == "(") {
     var list = [];
     while (tokens[0] != ")")
-      list.push(read(tokens));
-    tokens.shift();  // Pop off ")"
+      list.push(read_from_tokens(tokens));
+    tokens.shift();
     return list;
   } else if (token == ")") {
-    throw new Error("Syntax error: unexpected ')'");
+    throw new Error("Unbalanced parenthesis");
   } else {
-    return atom(token);
+    return coerce(token);
   }
 }
 
-// Parse a token as either a number or a symbol
-// @example atom("2") => 2
-// @example atom("x") => "x"
-function atom(token) {
-  if (!isNaN(Number(token)))
-    return Number(token);
-  else
-    return token;
+function coerce(token) {
+  return isNaN(Number(token)) ? token : Number(token);
 }
 
-////////// Environments
+// Environments
 
-function standardEnv() {
-  function toArray(args) {
-    return Array.prototype.slice.call(args);
-  }
-  function reduce(fn) {
-    return function() {
-      var args = toArray(arguments);
-      return args.reduce(fn);
-    }
-  }
-  return {
-    "+": reduce(function(a, b) { return a + b; }),
-    "-": reduce(function(a, b) { return a - b; }),
-    "*": reduce(function(a, b) { return a * b; }),
-    "/": reduce(function(a, b) { return a / b; }),
-    ">": function(a, b) { return a > b; },
-    "<": function(a, b) { return a < b; },
-    "=": function(a, b) { return a == b; }
-  };
+function Environment(scope, parent) {
+  this.scope = scope;
+  this.parent = parent || null;
 }
 
-var globalEnv = standardEnv();
+Environment.prototype.getValue = function(identifier) {
+  var scope = this.getScope(identifier);
+  return (scope)? scope[identifier] : undefined;
+}
 
-///////// Eval
+Environment.prototype.getScope = function(identifier) {
+  if (identifier in this.scope)
+    return this.scope
+  if (this.parent)
+    return this.parent.getScope(identifier);
+}
 
-// Evaluate an expression in an environment
-function evaluate(expr, env) {
-  env = env || globalEnv;
-  
-  if (expr in env) {
-    // Variable reference (x => 10)
-    return env[expr];
-  } else if (!isNaN(expr)) {
-    // Constant literal (10 => 10)
-    return expr;
-  } else if (expr[0] == "quote") {
-    // Quotation ((quote (1 2 3)) => (1 2 3))
+Environment.prototype.setValue = function(identifier, value) {
+  this.scope[identifier] = value;
+}
+
+var global = {
+  "+": reduce(function(a, b) { return a + b; }),
+  "-": reduce(function(a, b) { return a - b; }),
+  "*": reduce(function(a, b) { return a * b; }),
+  "/": reduce(function(a, b) { return a / b; }),
+  ">": function(a, b) { return a > b;  },
+  "<": function(a, b) { return a < b;  },
+  "=": function(a, b) { return a == b; },
+  "<=": function(a, b) { return a <= b; },
+  ">=": function(a, b) { return a >= b; }  
+};
+
+var special = {
+  "if": function(expr, env) {
+    return evaluate(expr[1]) ? evaluate(expr[2]) : evaluate(expr[3]);
+  },
+  "define": function(expr, env) {
+    var value = evaluate(expr[2]);
+    env.setValue(expr[1], value);
+    return value;
+  },
+  "quote": function(expr, env) {
     return expr[1];
-  } else if (expr[0] == "if") {
-    // Conditional (if (> 5 10) x y)
-    var result = (evaluate(expr[1], env)) ? expr[2] : expr[3];
-    return evaluate(result, env);
-  } else if (expr[0] == "define") {
-    // Definition (define x 10)
-    env[expr[1]] = evaluate(expr[2], env);
-    return env[expr[1]];
-  } else {
-    // Procedure call (proc arg ...)
-    var exps = [];
-    for (var i = 0; i < expr.length; i++) {
-      var exp = evaluate(expr[i], env);
-      exps.push(exp);
+  },
+  "let": function(expr, env) {
+    var letScope = expr[1].reduce(function(acc, arg, i) {
+      acc[arg[0]] = evaluate(arg[1]);
+      return acc;
+    }, {});
+    return evaluate(expr[2], new Environment(letScope, env));
+  },
+  "lambda": function(expr, env) {
+    return function() {
+      var lambdaArguments = arguments;
+      var lambdaScope = expr[1].reduce(function(acc, arg, i) {
+        acc[arg] = lambdaArguments[i];
+        return acc;
+      }, {});
+      return evaluate(expr[2], new Environment(lambdaScope, env));
     }
-    var proc = exps.shift();
-    return proc.apply(env, exps);
+  },
+  "set!": function(expr, env) {
+    var scope = env.getScope(expr[1]);
+    var value = evaluate(expr[2]);
+    scope[value];
+    return value;
+  }
+};
+
+// Evaluate
+
+function evaluate(expr, env) {
+  env = env || new Environment(global);
+
+  if (expr instanceof Array) {             // List expression
+    return evaluateList(expr, env);
+  } else if (typeof expr == "string") {    
+    if (expr[0] == '"' && expr[expr.length - 1] == '"')  
+      return expr;                         // String literal ("foo" => "foo")
+    else
+      return env.getValue(expr);           // Variable reference (x => 10)
+  } else if (typeof expr == "number") {    // Constant literal (10 => 10)
+    return expr;
   }
 }
 
-////////// REPL
+function evaluateList(expr, env) {
+  if (expr.length == 0) {                  // Empty list (() => ())
+    return expr;
+  } else if (expr[0] in special) {         // Special form
+    return special[expr[0]](expr, env);
+  } else {                                 // Procedure call
+    var tokens = expr.map(function(token) { 
+      return evaluate(token, env);
+    });
+    var proc = tokens.shift();
+    return proc.apply(undefined, tokens);    
+  }
+}
+
+// Parse and evaluate
+
+function run(input) {
+  return evaluate(parse(input));
+}
+
+// Utils
+
+function toArray(args) {
+  return Array.prototype.slice.call(args);
+}
+
+function reduce(fn) {
+  return function() {
+    var args = toArray(arguments);
+    return args.reduce(fn);
+  }
+}
+
+// REPL
 
 var readline = require('readline');
 
@@ -112,7 +163,7 @@ repl.setPrompt('jslisp> ');
 repl.prompt();
 repl.on('line', function(line) {
     if (line === "quit") repl.close();
-    console.log(evaluate(parse(line)));
+    console.log(run(line));
     repl.prompt();
 }).on('close', function(){
     process.exit(0);
