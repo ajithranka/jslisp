@@ -56,30 +56,34 @@ Environment.prototype.setValue = function(identifier, value) {
 }
 
 var global = {
-  "+": reduce(function(a, b) { return a + b; }),
-  "-": reduce(function(a, b) { return a - b; }),
-  "*": reduce(function(a, b) { return a * b; }),
-  "/": reduce(function(a, b) { return a / b; }),
-  ">": function(a, b) { return a > b;  },
-  "<": function(a, b) { return a < b;  },
-  "=": function(a, b) { return a == b; },
+  "+" : reduce(function(a, b) { return a + b; }),
+  "-" : reduce(function(a, b) { return a - b; }),
+  "*" : reduce(function(a, b) { return a * b; }),
+  "/" : reduce(function(a, b) { return a / b; }),
+  ">" : function(a, b) { return a > b;  },
+  "<" : function(a, b) { return a < b;  },
+  "=" : function(a, b) { return a == b; },
   "<=": function(a, b) { return a <= b; },
   ">=": function(a, b) { return a >= b; }  
 };
 
 var special = {
   "if": function(expr, env) {
+    // [if [test] then else]
     return evaluate(expr[1]) ? evaluate(expr[2]) : evaluate(expr[3]);
   },
   "define": function(expr, env) {
+    // [define var exp]
     var value = evaluate(expr[2]);
     env.setValue(expr[1], value);
     return value;
   },
   "quote": function(expr, env) {
+    // [quote exp]
     return expr[1];
   },
   "let": function(expr, env) {
+    // [let [[arg val], ...] exp]
     var letScope = expr[1].reduce(function(acc, arg, i) {
       acc[arg[0]] = evaluate(arg[1]);
       return acc;
@@ -88,6 +92,7 @@ var special = {
   },
   "lambda": function(expr, env) {
     return function() {
+      // [lambda [args, ...] exp]
       var lambdaArguments = arguments;
       var lambdaScope = expr[1].reduce(function(acc, arg, i) {
         acc[arg] = lambdaArguments[i];
@@ -97,6 +102,7 @@ var special = {
     }
   },
   "set!": function(expr, env) {
+    // [set! var exp]
     var scope = env.getScope(expr[1]);
     var value = evaluate(expr[2]);
     scope[value];
