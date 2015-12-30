@@ -47,15 +47,17 @@ Environment.prototype.getValue = function(identifier) {
 Environment.prototype.getScope = function(identifier) {
   if (identifier in this.scope)
     return this.scope
-  if (this.parent)
+  else if (this.parent)
     return this.parent.getScope(identifier);
+  else
+    return null;
 }
 
 Environment.prototype.setValue = function(identifier, value) {
   this.scope[identifier] = value;
 }
 
-var global = {
+var globalEnv = {
   "+" : reduce(function(a, b) { return a + b; }),
   "-" : reduce(function(a, b) { return a - b; }),
   "*" : reduce(function(a, b) { return a * b; }),
@@ -70,7 +72,8 @@ var global = {
 var special = {
   "if": function(expr, env) {
     // [if [test] then else]
-    return evaluate(expr[1]) ? evaluate(expr[2]) : evaluate(expr[3]);
+    return evaluate(expr[1]) ? evaluate(expr[2])
+                             : evaluate(expr[3]);
   },
   "define": function(expr, env) {
     // [define var exp]
@@ -83,7 +86,7 @@ var special = {
     return expr[1];
   },
   "let": function(expr, env) {
-    // [let [[arg val], ...] exp]
+    // [let [[var val], ...] exp]
     var letScope = expr[1].reduce(function(acc, arg, i) {
       acc[arg[0]] = evaluate(arg[1]);
       return acc;
@@ -105,7 +108,7 @@ var special = {
     // [set! var exp]
     var scope = env.getScope(expr[1]);
     var value = evaluate(expr[2]);
-    scope[value];
+    if(scope) scope[value];
     return value;
   }
 };
@@ -113,7 +116,7 @@ var special = {
 // Evaluate
 
 function evaluate(expr, env) {
-  env = env || new Environment(global);
+  env = env || new Environment(globalEnv);
 
   if (expr instanceof Array) {             // List expression
     return evaluateList(expr, env);
