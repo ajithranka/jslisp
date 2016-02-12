@@ -7,4 +7,4 @@ A simple lisp interpreter in JavaScript.
     100
     jslisp> quit
 
-I wrote this to understand how an interpreter works. The code ~~is stolen from~~ borrows heavily from Peter Norvig's [Python implementation](http://norvig.com/lispy.html) and Mary Rose Cook's [JavaScript version](https://github.com/maryrosecook/littlelisp).
+I wrote this to understand how an interpreter works. The code borrows heavily from Peter Norvig's [Python implementation](http://norvig.com/lispy.html) and Mary Rose Cook's [JavaScript version](https://github.com/maryrosecook/littlelisp).
