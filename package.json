@@ -1,0 +1,27 @@
+{
+    "name": "jslisp",
+    "version": "0.1.0",
+    "description": "A simple lisp interpreter in JavaScript",
+    "main": "lisp.js",
+    "scripts": {
+        "build": "babel lisp.js -o build/lisp.js"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/ajithranka/jslisp.git"
+    },
+    "keywords": [
+        "JavaScript",
+        "Lisp"
+    ],
+    "author": "Ajith Ranka",
+    "license": "MIT",
+    "bugs": {
+        "url": "https://github.com/ajithranka/jslisp/issues"
+    },
+    "homepage": "https://github.com/ajithranka/jslisp#readme",
+    "devDependencies": {
+        "babel-cli": "^6.5.1",
+        "babel-preset-es2015": "^6.5.0"
+    }
+}
