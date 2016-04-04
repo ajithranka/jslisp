@@ -1,7 +1,11 @@
 A simple lisp interpreter in JavaScript.
 
+---
+
+### Usage
+
 Run using node
-  
+
     $ node build/lisp.js
 
 Type `quit` to exit
